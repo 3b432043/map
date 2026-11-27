@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>島嶼漫遊｜台灣 3D 景點地圖</title>
+<style>
+:root{--ink:#17333a;--muted:#6e8588;--paper:#f4f8f4;--teal:#1d7777;--line:#dce8df;--gold:#e9ad53}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#b9e2e8;color:var(--ink);font-family:Inter,"Noto Sans TC",system-ui,sans-serif}
+#scene{position:fixed;inset:0}canvas{display:block}
+.topbar{position:fixed;z-index:5;left:24px;right:24px;top:20px;display:flex;align-items:center;justify-content:space-between;pointer-events:none}
+.brand,.top-actions{pointer-events:auto}.brand{background:#fffffff0;border:1px solid #ffffff;border-radius:18px;padding:12px 17px;box-shadow:0 8px 28px #214e4a18}
+.brand small{display:block;letter-spacing:.18em;font-size:9px;color:#70918d;font-weight:800}.brand b{font-size:18px;letter-spacing:.08em}
+.top-actions{display:flex;gap:8px}.pill{border:1px solid #ffffff;background:#fffffff0;color:#24474a;border-radius:999px;padding:10px 15px;font-weight:700;cursor:pointer;box-shadow:0 8px 24px #214e4a14}
+.pill.active,.pill:hover{background:#1d7777;color:white}
+.panel{position:fixed;z-index:5;top:104px;left:24px;width:280px;max-height:calc(100vh - 130px);overflow:auto;background:#fffffff0;border:1px solid white;border-radius:22px;padding:18px;box-shadow:0 15px 45px #214e4a20;backdrop-filter:blur(14px)}
+.eyebrow{font-size:10px;letter-spacing:.2em;font-weight:900;color:#78a09a}.panel h2{margin:5px 0 7px;font-size:21px}.panel p{font-size:12px;line-height:1.7;color:var(--muted);margin:0 0 14px}
+.search{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px 12px;font:inherit;outline:none;margin:2px 0 12px}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}.filter{border:1px solid var(--line);background:#f7faf7;border-radius:99px;padding:6px 9px;font-size:11px;cursor:pointer;color:#56716e}.filter.active{background:#dff0e9;border-color:#9cc9b9;color:#17615c}
+.place{display:flex;gap:10px;align-items:center;width:100%;border:0;border-top:1px solid #e8efea;background:transparent;padding:11px 3px;text-align:left;cursor:pointer;color:var(--ink)}
+.place:hover{background:#f1f8f3}.emoji{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;background:#e6f2e9;font-size:18px;flex:none}.place b{display:block;font-size:12px}.place small{color:#79908c;font-size:10px}
+.info{position:fixed;z-index:6;right:24px;bottom:24px;width:310px;background:#fffffff2;border:1px solid white;border-radius:22px;padding:18px;box-shadow:0 15px 45px #214e4a20;backdrop-filter:blur(14px);display:none}
+.info.show{display:block}.info .close{float:right;border:0;background:#edf4ef;border-radius:50%;width:28px;height:28px;cursor:pointer}.info h2{margin:8px 0 5px;font-size:21px}.info p{font-size:12px;line-height:1.8;color:#607b78}.tag{display:inline-block;background:#e4f2e9;color:#267166;padding:5px 9px;border-radius:99px;font-size:10px;font-weight:800}
+.hint{position:fixed;z-index:4;left:50%;bottom:24px;transform:translateX(-50%);background:#173c3bd9;color:white;padding:10px 16px;border-radius:99px;font-size:11px;backdrop-filter:blur(8px);white-space:nowrap}
+.controls{position:fixed;z-index:5;right:24px;top:104px;display:grid;grid-template-columns:42px 42px 42px;gap:5px}
+.controls button{border:1px solid white;background:#ffffffdf;border-radius:12px;height:38px;font-size:15px;cursor:pointer;color:#27585a;box-shadow:0 5px 15px #214e4a18}
+.controls button:nth-child(1){grid-column:2}.controls button:nth-child(2){grid-column:1;grid-row:2}.controls button:nth-child(3){grid-column:2;grid-row:2}.controls button:nth-child(4){grid-column:3;grid-row:2}
+.legend{position:fixed;z-index:4;right:24px;top:255px;background:#ffffffdc;border-radius:14px;padding:10px 13px;font-size:10px;color:#66817c;line-height:1.9}
+.legend span{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:6px;background:#e6a64c}
+#toast{position:fixed;z-index:10;left:50%;top:90px;transform:translateX(-50%);background:#173c3b;color:#fff;border-radius:99px;padding:9px 15px;font-size:12px;opacity:0;transition:.25s;pointer-events:none}
+@media(max-width:760px){.topbar{left:12px;right:12px;top:12px}.brand{padding:9px 12px}.brand b{font-size:14px}.top-actions .pill{padding:8px 10px;font-size:11px}.panel{left:12px;top:82px;width:220px;max-height:48vh;padding:13px}.panel h2{font-size:17px}.controls{right:12px;top:85px}.legend{display:none}.info{right:12px;bottom:64px;width:min(310px,calc(100vw - 24px))}.hint{bottom:12px;font-size:9px;max-width:94vw;white-space:normal;text-align:center}}
+</style>
+</head>
+<body>
+<div id="scene"></div>
+<div class="topbar">
+ <div class="brand"><small>ISLAND EXPLORER / TAIWAN</small><b>島嶼漫遊</b></div>
+ <div class="top-actions"><button class="pill active" id="overview">全島視角</button><button class="pill" id="walk">步行探索</button><button class="pill" id="reset">重設視角</button></div>
+</div>
+<aside class="panel">
+ <div class="eyebrow">TAIWAN ISLAND GUIDE</div><h2>沿著台灣，尋找風景。</h2>
+ <p>以台灣本島輪廓為底圖，依照景點實際經緯度安排位置。點選地標，探索北、中、南、東部特色。</p>
+ <input class="search" id="search" placeholder="搜尋景點、地區…">
+ <div class="filters" id="filters"><button class="filter active" data-kind="全部">全部</button><button class="filter" data-kind="北部">北部</button><button class="filter" data-kind="中部">中部</button><button class="filter" data-kind="南部">南部</button><button class="filter" data-kind="東部">東部</button></div>
+ <div id="places"></div>
+</aside>
+<div class="controls" id="pad"><button data-move="forward">▲</button><button data-move="left">◀</button><button data-move="back">▼</button><button data-move="right">▶</button></div>
+<div class="legend"><div><span></span>景點實際相對位置</div><div>拖曳旋轉・滾輪縮放</div><div>W A S D / 方向鍵移動</div></div>
+<div class="info" id="info"><button class="close" id="close">×</button><div class="tag" id="infoTag">景點介紹</div><h2 id="infoTitle"></h2><p id="infoText"></p><small id="infoCoord" style="color:#78908b;font-size:10px"></small></div>
+<div class="hint" id="hint">拖曳旋轉台灣地圖・點擊地標查看介紹・按 W A S D 操控旅人</div><div id="toast"></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+const root=document.querySelector('#scene');
+const scene=new THREE.Scene();scene.background=new THREE.Color('#b9e2e8');scene.fog=new THREE.Fog('#b9e2e8',42,90);
+const camera=new THREE.PerspectiveCamera(38,innerWidth/innerHeight,.1,180);camera.position.set(20,25,29);
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;root.appendChild(renderer.domElement);
+const controls=new OrbitControls(camera,renderer.domElement);controls.target.set(0,1.5,0);controls.enableDamping=true;controls.maxPolarAngle=Math.PI*.49;controls.minDistance=14;controls.maxDistance=58;
+scene.add(new THREE.HemisphereLight('#e9fbff','#66876c',2));const sun=new THREE.DirectionalLight('#fff1d5',3.1);sun.position.set(-14,30,16);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-28;sun.shadow.camera.right=28;sun.shadow.camera.top=35;sun.shadow.camera.bottom=-35;scene.add(sun);
+const mat=(c,r=.9)=>new THREE.MeshStandardMaterial({color:c,roughness:r});
+const sea=mat('#4cabbc',.35),land=mat('#79b77b'),landLight=mat('#9acb83'),mountain=mat('#527e69'),mountain2=mat('#73977a'),sand=mat('#e9d49d'),road=mat('#d8c59a'),white=mat('#fff8e8'),red=mat('#c95f48'),roof=mat('#b95743'),wood=mat('#9b704c'),blue=mat('#56b6c8');
+function mesh(g,m,x,y,z,parent=scene){const o=new THREE.Mesh(g,m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;parent.add(o);return o}
+const ocean=mesh(new THREE.CylinderGeometry(23,23,.5,96),sea,0,-.55,0);ocean.scale.z=1.22;
+const oceanRim=mesh(new THREE.CylinderGeometry(23.3,23.3,.13,96),mat('#79cbd0',.4),0,-.82,0);oceanRim.scale.z=1.22;
+// Geographic projection: longitude -> east/west, latitude -> north/south.
+function xy(lon,lat){return {x:(lon-121.0)*8.0,z:(24.0-lat)*7.4}}
+const outline=[[120.05,21.92],[120.18,22.18],[120.12,22.52],[120.12,22.86],[120.18,23.12],[120.28,23.40],[120.30,23.72],[120.38,24.02],[120.45,24.32],[120.55,24.62],[120.72,24.88],[120.92,25.12],[121.12,25.28],[121.35,25.30],[121.55,25.18],[121.72,25.02],[121.88,24.80],[121.95,24.55],[121.92,24.28],[121.82,24.02],[121.72,23.78],[121.63,23.52],[121.55,23.28],[121.48,23.02],[121.38,22.78],[121.25,22.52],[121.12,22.28],[120.96,22.08],[120.76,21.92],[120.50,21.86],[120.28,21.88]];
+const shape=new THREE.Shape();let first=xy(...outline[0]);shape.moveTo(first.x,-first.z);for(let i=1;i<outline.length;i++){let p=xy(...outline[i]);shape.lineTo(p.x,-p.z)}shape.closePath();
+const island=mesh(new THREE.ExtrudeGeometry(shape,{depth:1.35,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.24,bevelThickness:.18}),land,0,0,0);island.rotation.x=-Math.PI/2;island.position.y=.0;
+// broad central mountain spine, with the east side visibly steeper
+for(let i=0;i<13;i++){let lat=22.05+i*.245;let lon=120.98+Math.sin(i*.72)*.12;let p=xy(lon,lat);let h=2.2+(i%4)*.65;let peak=mesh(new THREE.ConeGeometry(1.45+(i%3)*.3,h,7),i%2?mountain:mountain2,p.x,1.25+h/2,p.z);peak.rotation.z=(i%2?-.12:.12)}
+// softer foothills around central range
+for(let i=0;i<24;i++){let lat=22.15+(i%12)*.25,lon=120.65+(Math.floor(i/12))*.65+(i%3)*.08,p=xy(lon,lat);let hill=mesh(new THREE.SphereGeometry(1.25+(i%3)*.25,12,9),i%2?landLight:land,p.x,1.25,p.z);hill.scale.set(1.2,.22,.9)}
+// coastal plains and rice fields as small patchwork squares
+for(let i=0;i<20;i++){let lon=120.25+(i%5)*.13,lat=23.05+Math.floor(i/5)*.12,p=xy(lon,lat);let field=mesh(new THREE.BoxGeometry(.72,.035,.48),i%2?mat('#b6cf83'):mat('#d4d98d'),p.x,1.42,p.z);field.rotation.y=(i%3)*.18}
+// Taiwan east coast cliff accents
+for(let i=0;i<7;i++){let p=xy(121.72,22.45+i*.34);let cliff=mesh(new THREE.BoxGeometry(.32,1.5+(i%3)*.5,1.1),mountain,p.x,1.5,p.z);cliff.rotation.z=.12}
+// small surrounding islands: Penghu, Green Island, Orchid Island, Xiaoliuqiu
+function islet(lon,lat,sx,sz,color=landLight){let p=xy(lon,lat);let o=mesh(new THREE.SphereGeometry(1,16,10),color,p.x,.45,p.z);o.scale.set(sx,.35,sz)}
+islet(119.58,23.57,.85,.62);islet(121.49,22.66,.42,.65);islet(121.55,22.04,.48,.75);islet(120.37,22.34,.34,.42);
+// forest dots, kept within island interior
+for(let i=0;i<95;i++){let lon=120.45+(i%10)*.105,lat=22.2+Math.floor(i/10)*.29;if(lon>121.1)continue;let p=xy(lon,lat);let tr=mesh(new THREE.CylinderGeometry(.045,.075,.36,6),wood,p.x,1.55,p.z);let crown=mesh(new THREE.ConeGeometry(.22,.58,6),mountain,p.x,2.0,p.z);}
+// landmark coordinate records
+const spots=[
+{id:'taipei',name:'台北 101・信義區',kind:'北部',emoji:'🏙️',lon:121.5645,lat:25.0330,desc:'位於台北市信義區，是台灣具代表性的摩天大樓。周邊有百貨商圈與市政府，能看見台北都會生活。',coord:'25.0330°N，121.5645°E',type:'101'},
+{id:'jiufen',name:'九份老街',kind:'北部',emoji:'🏮',lon:121.845,lat:25.109,desc:'位於新北市瑞芳區山坡上，沿著山勢發展的街巷、茶樓與紅燈籠，是北台灣知名山城景點。',coord:'25.109°N，121.845°E',type:'oldtown'},
+{id:'sunmoon',name:'日月潭',kind:'中部',emoji:'🌊',lon:120.915,lat:23.865,desc:'位於南投縣魚池鄉，湖面被群山環繞，可搭船、騎自行車，也能欣賞湖光山色。',coord:'23.865°N，120.915°E',type:'lake'},
+{id:'alishan',name:'阿里山森林遊樂區',kind:'中部',emoji:'🌲',lon:120.81,lat:23.51,desc:'位於嘉義縣阿里山鄉，以森林鐵路、檜木林、日出與雲海聞名，是台灣重要的高山森林景觀。',coord:'23.510°N，120.810°E',type:'forest'},
+{id:'tainan',name:'台南赤崁樓',kind:'南部',emoji:'🏯',lon:120.202,lat:22.997,desc:'位於台南市中西區，是台南重要的歷史古蹟。周邊街區保留許多廟宇、小吃與老屋文化。',coord:'22.997°N，120.202°E',type:'temple'},
+{id:'kenting',name:'墾丁・鵝鑾鼻',kind:'南部',emoji:'🏝️',lon:120.852,lat:21.902,desc:'位於屏東縣恆春半島最南端附近，有珊瑚礁海岸、草原與燈塔景觀，呈現台灣南端熱帶海岸風情。',coord:'21.902°N，120.852°E',type:'lighthouse'},
+{id:'taroko',name:'太魯閣・花蓮',kind:'東部',emoji:'⛰️',lon:121.62,lat:24.15,desc:'位於花蓮縣北部，以大理岩峽谷、陡峭山壁與立霧溪地形聞名。實際步道開放狀況請依官方公告。',coord:'24.150°N，121.620°E',type:'gorge'}
+];
+const clickable=[];
+function makePin(s){
+ const p=xy(s.lon,s.lat),g=new THREE.Group();g.position.set(p.x,1.45,p.z);scene.add(g);
+ const stem=mesh(new THREE.CylinderGeometry(.035,.045,.8,8),white,0,.42,0,g);
+ const ball=mesh(new THREE.SphereGeometry(.22,16,12),mat('#f0a94e'),0,.92,0,g);ball.userData.spot=s;clickable.push(ball);
+ const ring=mesh(new THREE.TorusGeometry(.38,.035,8,28),white,0,.08,0,g);ring.rotation.x=Math.PI/2;
+ // tiny floating label plate
+ const plate=mesh(new THREE.BoxGeometry(1.35,.32,.06),mat('#fffdf3'),0,1.34,.03,g);
+ return {g,p};
+}
+function addTaipei(p){let x=p.x,z=p.z;let b=mesh(new THREE.BoxGeometry(1.0,1.5,.85),mat('#9dbfc1'),x,2.2,z);let t=mesh(new THREE.BoxGeometry(.72,6.1,.72),mat('#4d9299'),x,5.95,z);for(let y=3.4;y<8.4;y+=.8)mesh(new THREE.BoxGeometry(.9,.12,.9),mat('#d9eee5'),x,y,z);mesh(new THREE.ConeGeometry(.12,.8,8),mat('#e1b65d'),x,9.35,z)}
+function addLake(p){let l=mesh(new THREE.CircleGeometry(1.55,40),blue,p.x,1.47,p.z);l.rotation.x=-Math.PI/2;l.scale.set(1.0,.72,1);for(let i=0;i<4;i++){let m=mesh(new THREE.ConeGeometry(.65,1.3,6),mountain2,p.x-2+i*1.1,1.8,p.z-1.4)}}
+function addForest(p){for(let i=0;i<7;i++){let x=p.x-1.4+(i%4)*.85,z=p.z-1+Math.floor(i/4)*.8;mesh(new THREE.CylinderGeometry(.08,.11,1.5,7),wood,x,2.15,z);mesh(new THREE.ConeGeometry(.48,1.8,7),darkTree,x,3.5,z)}}
+const darkTree=mat('#315f50');
+function addTemple(p){let x=p.x,z=p.z;mesh(new THREE.BoxGeometry(1.9,1.1,1.6),mat('#e9d0a7'),x,2.05,z);let r=mesh(new THREE.ConeGeometry(1.45,.8,4),roof,x,3.0,z);r.rotation.y=Math.PI/4;for(let i=0;i<3;i++)mesh(new THREE.CylinderGeometry(.07,.07,1.25,8),red,x-.58+i*.58,2.1,z+.83)}
+function addOldTown(p){for(let i=0;i<5;i++){let x=p.x-1.25+i*.58,z=p.z+(i%2)*.45;let h=.8+(i%3)*.25;mesh(new THREE.BoxGeometry(.58,h,.58),mat(i%2?'#e8d6b8':'#d9c6a8'),x,1.55+h/2,z);let r=mesh(new THREE.ConeGeometry(.48,.38,4),roof,x,1.55+h+.16,z);r.rotation.y=Math.PI/4;let lamp=mesh(new THREE.SphereGeometry(.09,8,8),mat('#f3a64d'),x,2.45,z+.32)}}
+function addLighthouse(p){mesh(new THREE.CylinderGeometry(.28,.42,2.3,12),white,p.x,2.65,p.z);mesh(new THREE.ConeGeometry(.48,.45,8),red,p.x,4.0,p.z);mesh(new THREE.CylinderGeometry(.36,.36,.16,12),mat('#e5b85e'),p.x,3.75,p.z)}
+function addGorge(p){for(let i=0;i<3;i++){let cliff=mesh(new THREE.ConeGeometry(.9,3.8,5),i%2?mountain:mountain2,p.x-1.15+i*1.15,2.7,p.z);cliff.rotation.z=(i-1)*.18}let river=mesh(new THREE.BoxGeometry(.35,.05,3.1),blue,p.x,1.48,p.z);river.rotation.y=.35}
+spots.forEach(s=>{let {p}=makePin(s);if(s.type==='101')addTaipei(p);if(s.type==='lake')addLake(p);if(s.type==='forest')addForest(p);if(s.type==='temple')addTemple(p);if(s.type==='oldtown')addOldTown(p);if(s.type==='lighthouse')addLighthouse(p);if(s.type==='gorge')addGorge(p)});
+// Taiwan Strait and Pacific labels
+function label(text,x,z){const c=document.createElement('canvas');c.width=512;c.height=128;const ctx=c.getContext('2d');ctx.font='bold 42px sans-serif';ctx.fillStyle='#eafaff';ctx.textAlign='center';ctx.fillText(text,256,76);const tex=new THREE.CanvasTexture(c);const m=new THREE.MeshBasicMaterial({map:tex,transparent:true,depthWrite:false});let o=new THREE.Mesh(new THREE.PlaneGeometry(7,1.7),m);o.rotation.x=-Math.PI/2;o.position.set(x,.02,z);scene.add(o)}
+label('台灣海峽',-12,1);label('太平洋',11,0);
+// clouds
+const clouds=[];for(let i=0;i<7;i++){let g=new THREE.Group();scene.add(g);let x=(i%3-1)*22,z=(Math.floor(i/3)-1)*23;for(let j=0;j<3;j++){let c=mesh(new THREE.SphereGeometry(1.0+(j%2)*.3,12,10),white,x+(j-1)*1.0,13,z,g);c.castShadow=false}clouds.push(g)}
+// avatar
+const avatar=new THREE.Group();scene.add(avatar);avatar.position.set(0,1.5,8);
+mesh(new THREE.CapsuleGeometry(.2,.5,4,8),mat('#e7a15a'),0,.58,0,avatar);mesh(new THREE.SphereGeometry(.21,16,12),mat('#f0c9a1'),0,1.08,0,avatar);mesh(new THREE.BoxGeometry(.4,.11,.18),mat('#3b8d87'),0,.78,.03,avatar);
+const legs=[];for(let x of [-.11,.11])legs.push(mesh(new THREE.BoxGeometry(.12,.34,.13),mat('#355d68'),x,.16,0,avatar));
+let moving={},clock=new THREE.Clock();
+function toast(t){let e=document.querySelector('#toast');e.textContent=t;e.style.opacity=1;clearTimeout(e._t);e._t=setTimeout(()=>e.style.opacity=0,1600)}
+function selectSpot(s){document.querySelector('#info').classList.add('show');document.querySelector('#infoTitle').textContent=s.name;document.querySelector('#infoText').textContent=s.desc;document.querySelector('#infoTag').textContent=s.kind+'景點';document.querySelector('#infoCoord').textContent='座標：約 '+s.coord;let p=xy(s.lon,s.lat);controls.target.set(p.x,2,p.z);toast('已定位：'+s.name)}
+const ray=new THREE.Raycaster(),mouse=new THREE.Vector2();renderer.domElement.addEventListener('click',e=>{mouse.x=e.clientX/innerWidth*2-1;mouse.y=-(e.clientY/innerHeight)*2+1;ray.setFromCamera(mouse,camera);let hit=ray.intersectObjects(clickable);if(hit.length)selectSpot(hit[0].object.userData.spot)});
+function drawList(){let q=document.querySelector('#search').value.toLowerCase(),kind=document.querySelector('.filter.active').dataset.kind;let items=spots.filter(s=>(kind==='全部'||s.kind===kind)&&(s.name.toLowerCase().includes(q)||s.kind.toLowerCase().includes(q)));document.querySelector('#places').innerHTML=items.map(s=>`<button class="place" data-id="${s.id}"><span class="emoji">${s.emoji}</span><span><b>${s.name}</b><small>${s.kind}・點擊定位</small></span></button>`).join('');document.querySelectorAll('.place').forEach(b=>b.onclick=()=>selectSpot(spots.find(x=>x.id===b.dataset.id)))}
+document.querySelectorAll('.filter').forEach(b=>b.onclick=()=>{document.querySelectorAll('.filter').forEach(x=>x.classList.remove('active'));b.classList.add('active');drawList()});document.querySelector('#search').oninput=drawList;drawList();
+document.addEventListener('keydown',e=>{let k=e.key.toLowerCase();if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k))moving[k]=true});
+document.addEventListener('keyup',e=>moving[e.key.toLowerCase()]=false);
+document.querySelectorAll('[data-move]').forEach(b=>{let map={forward:'w',back:'s',left:'a',right:'d'},d=map[b.dataset.move];b.addEventListener('pointerdown',e=>{e.preventDefault();moving[d]=true});['pointerup','pointerleave','pointercancel'].forEach(ev=>b.addEventListener(ev,()=>moving[d]=false))});
+document.querySelector('#walk').onclick=()=>toast('步行模式：使用 WASD 或方向鍵移動');
+document.querySelector('#overview').onclick=()=>{avatar.position.set(0,1.5,8);camera.position.set(20,25,29);controls.target.set(0,1.5,0);toast('已切換全島視角')};
+document.querySelector('#reset').onclick=()=>{camera.position.set(20,25,29);controls.target.set(0,1.5,0);toast('視角已重設')};
+document.querySelector('#close').onclick=()=>document.querySelector('#info').classList.remove('show');
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04),t=clock.elapsedTime;controls.update();clouds.forEach((g,i)=>g.position.x=Math.sin(t*.08+i)*.7);let dx=(moving.d||moving.arrowright?1:0)-(moving.a||moving.arrowleft?1:0),dz=(moving.s||moving.arrowdown?1:0)-(moving.w||moving.arrowup?1:0),len=Math.hypot(dx,dz);if(len){dx/=len;dz/=len;avatar.position.x+=dx*dt*2.5;avatar.position.z+=dz*dt*2.5;avatar.position.x=THREE.MathUtils.clamp(avatar.position.x,-13,13);avatar.position.z=THREE.MathUtils.clamp(avatar.position.z,-15,15);avatar.rotation.y=Math.atan2(dx,dz);legs[0].rotation.x=Math.sin(t*11)*.5;legs[1].rotation.x=-Math.sin(t*11)*.5}else legs.forEach(l=>l.rotation.x=0);avatar.position.y=1.5+Math.abs(Math.sin(t*11))*(len?.04:0);renderer.render(scene,camera)}
+animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>
